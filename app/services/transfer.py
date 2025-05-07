@@ -23,16 +23,13 @@ def transfer_file(config, full_path):
     """
     local_file_path=os.path.basename(full_path)
 
-    if not os.path.exists(local_file_path):
-        logger.error(f"Local file not found: {local_file_path}")
-        return False
     
     transfer_config = config.get("transfer", {})
     # method = transfer_config.get("method", "scp").lower()
     method="scp"
 
-    print("SCP fucntion")
-    return transfer_scp(transfer_config, local_file_path, full_path)
+    # print("SCP fucntion")
+    # return transfer_scp(transfer_config, local_file_path, full_path)
     
     if method == "scp":
         print("SCP fucntion")
