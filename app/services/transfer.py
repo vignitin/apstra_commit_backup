@@ -9,7 +9,7 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-def transfer_file(config, local_file_path):
+def transfer_file(config, full_path):
     """
     Transfer a file to the remote server using the configured method.
     
@@ -20,7 +20,9 @@ def transfer_file(config, local_file_path):
     Returns:
         bool: True if successful, False otherwise
     """
+    local_file_path=os.path.basename(full_path)
     print(local_file_path)
+    
     if not os.path.exists(local_file_path):
         logger.error(f"Local file not found: {local_file_path}")
         return False
