@@ -32,7 +32,7 @@ def run_backup_script(script_path, parameters=None):
 
     try:
         #Movef to subprocess
-        result = subprocess.run(['sudo', 'apt-get', 'update'], 
+        result = subprocess.run(['sudo', 'bash', '/usr/sbin/aos_backup'], 
                             capture_output=True, text=True, check=True)
         print("Command output:", result.stdout)
         return True
