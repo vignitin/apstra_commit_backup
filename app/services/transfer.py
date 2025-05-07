@@ -29,6 +29,9 @@ def transfer_file(config, full_path):
     transfer_config = config.get("transfer", {})
     # method = transfer_config.get("method", "scp").lower()
     method="scp"
+
+    print("SCP fucntion")
+    return transfer_scp(transfer_config, local_file_path, full_path)
     
     if method == "scp":
         print("SCP fucntion")
