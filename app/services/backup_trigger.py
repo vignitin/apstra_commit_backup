@@ -32,15 +32,18 @@ def run_backup_script(script_path, parameters=None):
 
     try:
         #Movef to subprocess
-        result = subprocess.run(['sudo', 'bash', '/usr/sbin/aos_backup'], 
+        result = subprocess.run(['sudo', 'bash', '/usr/sbin/aos_backup'],
                             capture_output=True, text=True, check=True)
         print("Command output:", result.stdout)
-        return True
+        stdout=result.stdout
+        stderr=result.stderr
+
+        return True, stdout, stderr
     
     except subprocess.CalledProcessError as e:
         print(f"Command failed with error: {e}")
         print(f"Error output: {e.stderr}")
-        return False
+        return False, stdout, stderr
     
     # try:
     #     # Execute the script
