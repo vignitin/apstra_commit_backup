@@ -21,8 +21,6 @@ def transfer_file(config, full_path):
         bool: True if successful, False otherwise
     """
     local_file_path=os.path.basename(full_path)
-    print("path" + local_file_path)
-    print("file" + local_file_path)
 
     if not os.path.exists(local_file_path):
         logger.error(f"Local file not found: {local_file_path}")
