@@ -69,7 +69,7 @@ def transfer_scp(config, local_file_path, full_path):
     
     # Get filename from path
     filename = os.path.basename(full_path)
-    
+    full_path=f"/var/lib/aos/snapshot/{local_file_path}/aos.data.tar.gz"
     # Prepare the command
     ssh_key_path = config.get("ssh_key_path")
     
