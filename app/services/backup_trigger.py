@@ -90,7 +90,7 @@ def get_latest_backup_file(backup_output):
     for line in backup_output.splitlines():
         if line.startswith("New AOS snapshot:"):
             file_path = line.split(":", 1)[1].strip()
-            complete_path = "var/lib/aos/snapshot/" + file_path
+            complete_path = "/var/lib/aos/snapshot/" + file_path
             if os.path.exists(complete_path):
                 logger.info(f"Found backup file: {complete_path}")
                 return complete_path
