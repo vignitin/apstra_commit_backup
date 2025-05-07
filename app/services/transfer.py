@@ -52,7 +52,7 @@ def transfer_scp(config, local_file_path):
     port = config.get("port", 22)
     username = config.get("username")
     remote_dir = config.get("remote_directory", ".")
-    
+    remote_dir = remote_dir[1:] if remote_dir.startswith('/') else remote_dir
     if not all([host, username]):
         logger.error("Missing required SCP configuration")
         return False
@@ -70,7 +70,7 @@ def transfer_scp(config, local_file_path):
             "-P", str(port),
             "-i", ssh_key_path,
             local_file_path,
-            f"{username}@{host}:{remote_dir}/{filename}"
+            f"{username}@{host}:./{filename}"
         ]
     else:
         # Use password authentication (will prompt for password)
