@@ -73,7 +73,7 @@ def transfer_scp(config, local_file_path, full_path):
             "-P", str(port),
             "-i", ssh_key_path,
             full_path,
-            f"{username}@{host}:./{filename}"
+            f"{username}@{host}:~/{filename}"
         ]
         print(cmd)
     else:
@@ -82,7 +82,7 @@ def transfer_scp(config, local_file_path, full_path):
             "scp",
             "-P", str(port),
             full_path,
-            f"{username}@{host}:./{filename}"
+            f"{username}@{host}:~/{filename}"
         ]
         print(cmd)
     
@@ -91,7 +91,7 @@ def transfer_scp(config, local_file_path, full_path):
     if password:
         cmd = ["sshpass", "-p", password] + cmd
     print(cmd)
-    logger.info(f"Transferring file via SCP: {local_file_path} -> {host}:{remote_dir}/{filename}")
+    logger.info(f"Transferring file via SCP: {local_file_path} -> {host}:{remote_dir}{filename}")
     print(cmd)
     try:
         process = subprocess.run(
@@ -134,7 +134,7 @@ def transfer_sftp(config, local_file_path):
     username = config.get("username")
     password = config.get("password")
     ssh_key_path = config.get("ssh_key_path")
-    remote_dir = config.get("remote_directory", ".")
+    remote_dir = config.get("remote_directory", "~/")
     
     if not all([host, username]) or (not password and not ssh_key_path):
         logger.error("Missing required SFTP configuration")
