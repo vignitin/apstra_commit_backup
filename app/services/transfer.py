@@ -77,6 +77,7 @@ def transfer_scp(config, local_file_path, full_path):
     if ssh_key_path:
         # Use SSH key authentication
         cmd = [
+            "sudo",
             "scp",
             "-P", str(port),
             "-i", ssh_key_path,
@@ -88,6 +89,7 @@ def transfer_scp(config, local_file_path, full_path):
         # Use password authentication (will prompt for password)
         print("ssh command")
         cmd = [
+            "sudo",
             "scp",
             "-P", str(port),
             full_path,
