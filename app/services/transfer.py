@@ -10,6 +10,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 def transfer_file(config, full_path):
+    print("transfer_file")
     """
     Transfer a file to the remote server using the configured method.
     
