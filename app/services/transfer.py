@@ -22,7 +22,7 @@ def transfer_file(config, full_path):
     """
     local_file_path=os.path.basename(full_path)
     print(local_file_path)
-    
+
     if not os.path.exists(local_file_path):
         logger.error(f"Local file not found: {local_file_path}")
         return False
@@ -31,7 +31,7 @@ def transfer_file(config, full_path):
     method = transfer_config.get("method", "scp").lower()
     
     if method == "scp":
-        return transfer_scp(transfer_config, local_file_path)
+        return transfer_scp(transfer_config, local_file_path, full_path)
     elif method == "sftp":
         return transfer_sftp(transfer_config, local_file_path)
     elif method == "ftp":
@@ -40,7 +40,7 @@ def transfer_file(config, full_path):
         logger.error(f"Unsupported transfer method: {method}")
         return False
 
-def transfer_scp(config, local_file_path):
+def transfer_scp(config, local_file_path, full_path):
     """
     Transfer a file using SCP.
     
@@ -61,7 +61,7 @@ def transfer_scp(config, local_file_path):
         return False
     
     # Get filename from path
-    filename = os.path.basename(local_file_path)
+    filename = os.path.basename(full_path)
     
     # Prepare the command
     ssh_key_path = config.get("ssh_key_path")
@@ -72,25 +72,27 @@ def transfer_scp(config, local_file_path):
             "scp",
             "-P", str(port),
             "-i", ssh_key_path,
-            local_file_path,
+            full_path,
             f"{username}@{host}:./{filename}"
         ]
+        print(cmd)
     else:
         # Use password authentication (will prompt for password)
         cmd = [
             "scp",
             "-P", str(port),
-            local_file_path,
-            f"{username}@{host}:{remote_dir}/{filename}"
+            full_path,
+            f"{username}@{host}:./{filename}"
         ]
+        print(cmd)
     
     # If password is specified, use sshpass
     password = config.get("password")
     if password:
         cmd = ["sshpass", "-p", password] + cmd
-    
+    print(cmd)
     logger.info(f"Transferring file via SCP: {local_file_path} -> {host}:{remote_dir}/{filename}")
-    
+    print(cmd)
     try:
         process = subprocess.run(
             cmd,
