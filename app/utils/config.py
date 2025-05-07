@@ -4,7 +4,7 @@ Configuration management for the API polling and backup service.
 import os
 import yaml
 import logging
-from dotenv import load_dotenv
+from from dotenv import load_dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 

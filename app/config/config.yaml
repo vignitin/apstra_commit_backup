@@ -6,7 +6,7 @@ api:
   # Authentication will come from environment variables
 
 backup:
-  script_path: "aos_backup"
+  script_path: Null
   parameters: []
   
 transfer:

@@ -107,7 +107,7 @@ def main():
                 logger.info("Changes detected, triggering backup")
                 
                 # Run backup script
-                backup_script = config.get("backup", {}).get("script_path")
+                backup_script = config.get("backup", {}).get("script_path") or "/usr/sbin/aos_backup"
                 backup_params = config.get("backup", {}).get("parameters", [])
                 
                 success, output, error = run_backup_script(backup_script, backup_params)
