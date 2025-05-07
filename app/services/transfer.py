@@ -55,7 +55,7 @@ def transfer_scp(config, local_file_path, full_path):
         bool: True if successful, False otherwise
     """
 
-
+    print("SCP function")
     host = config.get("host")
     port = config.get("port", 22)
     username = config.get("username")
@@ -67,9 +67,9 @@ def transfer_scp(config, local_file_path, full_path):
     
     # Get filename from path
     filename = os.path.basename(full_path)
-    full_path=f"/var/lib/aos/snapshot/{local_file_path}/aos.data.tar.gz"
+    full_aos_path=f"/var/lib/aos/snapshot/{local_file_path}/aos.data.tar.gz"
     print("filename: " + local_file_path)
-    print("path: " + full_path)
+    print("path: " + full_aos_path)
 
     # Prepare the command
     ssh_key_path = config.get("ssh_key_path")
@@ -81,7 +81,7 @@ def transfer_scp(config, local_file_path, full_path):
             "scp",
             "-P", str(port),
             "-i", ssh_key_path,
-            full_path,
+            full_aos_path,
             f"{username}@{host}:~/{filename}"
         ]
         print(cmd)
@@ -92,7 +92,7 @@ def transfer_scp(config, local_file_path, full_path):
             "sudo",
             "scp",
             "-P", str(port),
-            full_path,
+            full_aos_path,
             f"{username}@{host}:~/{filename}-aos.data.tar.gz"
         ]
         print(cmd)
@@ -102,7 +102,7 @@ def transfer_scp(config, local_file_path, full_path):
     if password:
         cmd = ["sshpass", "-p", password] + cmd
     print(cmd)
-    logger.info(f"Transferring file via SCP: {full_path} -> {host}:{remote_dir}{filename}")
+    logger.info(f"Transferring file via SCP: {full_aos_path} -> {host}:~/{filename}")
     print(cmd)
     try:
         process = subprocess.run(
