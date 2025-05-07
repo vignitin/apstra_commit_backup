@@ -29,33 +29,45 @@ def run_backup_script(script_path, parameters=None):
         command.extend(parameters)
     
     logger.info(f"Executing backup script: {' '.join(command)}")
-    
+
     try:
-        # Execute the script
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
+        #Movef to subprocess
+        result = subprocess.run(['sudo', 'apt-get', 'update'], 
+                            capture_output=True, text=True, check=True)
+        print("Command output:", result.stdout)
+        return True
+    
+    except subprocess.CalledProcessError as e:
+        print(f"Command failed with error: {e}")
+        print(f"Error output: {e.stderr}")
+        return False
+    
+    # try:
+    #     # Execute the script
+    #     process = subprocess.Popen(
+    #         command,
+    #         stdout=subprocess.PIPE,
+    #         stderr=subprocess.PIPE,
+    #         text=True
+    #     )
         
-        # Wait for the process to complete
-        stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout
+    #     # Wait for the process to complete
+    #     stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout
         
-        # Check return code
-        if process.returncode == 0:
-            logger.info("Backup script executed successfully")
-            return True, stdout, stderr
-        else:
-            logger.error(f"Backup script failed with return code {process.returncode}")
-            return False, stdout, stderr
+    #     # Check return code
+    #     if process.returncode == 0:
+    #         logger.info("Backup script executed successfully")
+    #         return True, stdout, stderr
+    #     else:
+    #         logger.error(f"Backup script failed with return code {process.returncode}")
+    #         return False, stdout, stderr
         
-    except subprocess.TimeoutExpired:
-        logger.error("Backup script timed out")
-        return False, "", "Backup script timed out"
-    except Exception as e:
-        logger.error(f"Error executing backup script: {str(e)}")
-        return False, "", str(e)
+    # except subprocess.TimeoutExpired:
+    #     logger.error("Backup script timed out")
+    #     return False, "", "Backup script timed out"
+    # except Exception as e:
+    #     logger.error(f"Error executing backup script: {str(e)}")
+    #     return False, "", str(e)
 
 def get_latest_backup_file(backup_output):
     """
