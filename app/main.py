@@ -116,8 +116,6 @@ def main():
                 if success:
                     # Get the backup file path from the output
                     backup_file = get_latest_backup_file(output)
-                    print("backup file")
-                    print(backup_file)
                     if backup_file:
                         # Transfer the backup file
                         print("Main transfer funtion")
