@@ -1,6 +1,6 @@
 # Apstra API Polling and Backup Tool
 
-A robust utility that monitors Apstra API endpoints for changes across multiple blueprints and triggers backups when changes are detected, with secure transfer to remote storage.
+A robust utility that monitors commits across multiple blueprints and triggers backups when changes are detected, with secure transfer to remote storage.
 
 ## Features
 
@@ -12,18 +12,17 @@ A robust utility that monitors Apstra API endpoints for changes across multiple 
 - **Flexible Authentication**: Supports password and SSH key authentication
 - **Comprehensive Logging**: Detailed logs for monitoring and troubleshooting
 - **State Management**: Persistent tracking of blueprint states across restarts
-- **Docker Support**: Easy containerization with provided Dockerfile
 
 ## Installation
 
 ### Prerequisites
 
 - Python 3.8 or higher
-- pip package manager
+- pip3 package manager
 - Access to an Apstra server
 - Remote storage server (for backup transfers)
 
-### Basic Installation
+### Basic Installation and Useage
 
 1. Clone the repository:
    ```bash
@@ -55,6 +54,15 @@ A robust utility that monitors Apstra API endpoints for changes across multiple 
    ```
 
 5. Update the configuration in `app/config/config.yaml`
+   ```bash
+   cp app/config/example.config.yaml app/config/config.yaml
+   vi app/config/config.yaml
+   ```
+6. Run script
+   ```bash
+   sudo -E python3 app/main.py
+   ```
+   Apstra's `aos_backup` script needs to be run as sudo 
 
 
 
@@ -120,24 +128,14 @@ The application supports the following command line options:
 
 Example:
 ```
-python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
+sudo -E python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
 ```
 
-
-### Configuration File
-
-#### Optional Environment Variables
-
-- `REMOTE_USERNAME`: Username for remote server
-- `REMOTE_PASSWORD`: Password for remote server (for password authentication)
-- `SSH_KEY_PATH`: Path to SSH key file (for key-based authentication)
-- `SSH_KEY_PASSPHRASE`: Passphrase for SSH key if it's protected
-
-### Configuration File
+## Configuration File
 
 The configuration file (`app/config/config.yaml`) contains settings for:
 
-#### Multi-Blueprint Configuration
+### Multi-Blueprint Configuration
 
 ```yaml
 # API Configuration
@@ -168,7 +166,7 @@ transfer:
 
 Each blueprint requires:
 - `id`: The UUID of the blueprint (used for identification and backup parameters)
-- `endpoint`: The API endpoint to poll for this blueprint
+- `endpoint`: The API endpoint to poll for this blueprint (requires the change in blueprint ID)
 
 Optional fields:
 - `name`: A friendly name for the blueprint (used in logs and filenames)
@@ -178,19 +176,14 @@ Optional fields:
 ### Running the Application
 
 ```bash
-python app/main.py
+sudo -E python app/main.py
 ```
 
 With custom configuration and environment files:
 
 ```bash
-python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
+sudo -E python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
 ```
-
-### Command Line Options
-
-- `--config PATH`: Path to custom configuration file
-- `--env-file PATH`: Path to custom .env file
 
 
 ## How It Works
@@ -205,15 +198,15 @@ python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
 
 ### Backup Process
 
-1. When changes are detected in a blueprint, the backup script is called with the blueprint ID
-2. The backup script creates a snapshot of the blueprint configuration
+1. When changes are detected in a blueprint, the backup script
+2. The backup script creates a snapshot of the AOS server
 3. The path to the backup file is extracted from the script output
 4. The backup file is transferred to the remote server
 
 ### File Transfer
 
 Backup files are transferred to the remote server with filenames that include:
-- The blueprint name (or ID if no name is provided)
+- The blueprint name that triggered the backup (or ID if no name is provided)
 - A timestamp
 - The file extension
 
@@ -348,7 +341,6 @@ transfer:
   method: "scp"
   host: "backup.example.com"
   port: 22
-  remote_directory: "/backups/apstra/"
 ```
 
 **Required Environment Variables:**
@@ -364,7 +356,6 @@ transfer:
   method: "scp"
   host: "backup.example.com"
   port: 22
-  remote_directory: "/backups/apstra/"
 ```
 
 **Required Environment Variables:**
@@ -403,57 +394,7 @@ Log example:
 2025-05-08 10:15:33,345 - app.main - INFO - Changes detected in blueprint: DataCenter-1 (494c107b-3620-4be1-9ffc-1ffc8611482b)
 ```
 
-## Best Practices
-
-1. **Security**: 
-   - Keep sensitive information in environment variables, not in configuration files
-   - Use SSH key authentication rather than passwords when possible
-   - Run the application with minimal required permissions
-
-2. **Monitoring**:
-   - Set up monitoring for the application's log file
-   - Configure alerts for backup failures
-   - Periodically verify that backups are being created and transferred
-
-3. **Reliability**:
-   - Use appropriate timeouts for API, backup, and transfer operations
-   - Configure retry attempts for network operations to handle transient failures
-   - Ensure the backup script is idempotent (can be run multiple times safely)
-
-4. **Performance**:
-   - Adjust polling intervals based on how frequently blueprints change
-   - Consider staggering polling for multiple blueprints to avoid overloading the API
-
-5. **Docker Deployment**:
-   - Use volumes for persistent storage of logs and state files
-   - Consider using Docker Compose for easier configuration management
-   - Set up health checks to monitor the application's status
-
-## Troubleshooting
-
-### Common Issues
-
-**Connection refused when connecting to Apstra server**
-- Verify the server address is correct
-- Ensure network connectivity to the server
-- Check if the Apstra service is running
-
-**Authentication failures**
-- Verify username and password are correct
-- Check for expired credentials
-- Ensure the API user has sufficient permissions
-
-**Backup script failures**
-- Check if the script path is correct
-- Ensure the script has execute permissions
-- Verify the script can be run manually
-
-**Transfer failures**
-- Verify remote server address and credentials
-- Check network connectivity to the remote server
-- Ensure sufficient disk space on the remote server
-
-### Debug Mode
+## Debug Mode
 
 To enable more detailed logging, set the logging level to DEBUG in the configuration:
 
@@ -465,13 +406,3 @@ logging:
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Acknowledgements
-
-- The Apstra team for their API documentation
-- The Python community for excellent libraries
-- All contributors to this project
