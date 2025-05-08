@@ -5,6 +5,7 @@ python-dotenv==1.0.0
 
 # Transfer methods
 paramiko==3.3.1  # For SFTP transfers
+scp==0.14.5      # For SCP transfers with Paramiko
 
 # Testing
 pytest==7.4.3

@@ -6,11 +6,13 @@ import subprocess
 import logging
 import ftplib
 from pathlib import Path
+import paramiko
+from paramiko import SSHClient
+from scp import SCPClient
 
 logger = logging.getLogger(__name__)
 
 def transfer_file(config, full_path):
-    print("transfer_file")
     """
     Transfer a file to the remote server using the configured method.
     
@@ -27,12 +29,8 @@ def transfer_file(config, full_path):
     transfer_config = config.get("transfer", {})
     # method = transfer_config.get("method", "scp").lower()
     method="scp"
-
-    # print("SCP fucntion")
-    # return transfer_scp(transfer_config, local_file_path, full_path)
     
     if method == "scp":
-        print("SCP fucntion")
         return transfer_scp(transfer_config, local_file_path, full_path)
     elif method == "sftp":
         return transfer_sftp(transfer_config, local_file_path)
@@ -42,81 +40,87 @@ def transfer_file(config, full_path):
         logger.error(f"Unsupported transfer method: {method}")
         return False
 
+
+logger = logging.getLogger(__name__)
+
 def transfer_scp(config, local_file_path, full_path):
     """
-    Transfer a file using SCP.
+    Transfer a file using SCP via Paramiko.
     
     Args:
         config (dict): SCP configuration
         local_file_path (str): Path to the local file
+        full_path (str): Full path information
         
     Returns:
         bool: True if successful, False otherwise
     """
-
-    print("SCP function")
     host = config.get("host")
     port = config.get("port", 22)
     username = config.get("username")
-    remote_dir = config.get("remote_directory", ".")
-    remote_dir = remote_dir[1:] if remote_dir.startswith('/') else remote_dir
+    password = config.get("password")
+    ssh_key_path = config.get("ssh_key_path")
+    
     if not all([host, username]):
         logger.error("Missing required SCP configuration")
         return False
     
     # Get filename from path
     filename = os.path.basename(full_path)
-    full_aos_path=f"/var/lib/aos/snapshot/{local_file_path}/aos.data.tar.gz"
+    full_aos_path = f"/var/lib/aos/snapshot/{local_file_path}/aos.data.tar.gz"
+    remote_filename = f"{filename}-aos.data.tar.gz"
+    
     print("filename: " + local_file_path)
     print("path: " + full_aos_path)
-
-    # Prepare the command
-    ssh_key_path = config.get("ssh_key_path")
     
-    if ssh_key_path:
-        # Use SSH key authentication
-        cmd = [
-            "sudo",
-            "scp",
-            "-P", str(port),
-            "-i", ssh_key_path,
-            full_aos_path,
-            f"{username}@{host}:~/{filename}"
-        ]
-        print(cmd)
-    else:
-        # Use password authentication (will prompt for password)
-        print("ssh command")
-        cmd = [
-            "sudo",
-            "scp",
-            "-P", str(port),
-            full_aos_path,
-            f"{username}@{host}:~/{filename}-aos.data.tar.gz"
-        ]
-        print(cmd)
-    
-    # If password is specified, use sshpass
-    password = config.get("password")
-    if password:
-        cmd = ["sshpass", "-p", password] + cmd
-    print(cmd)
-    logger.info(f"Transferring file via SCP: {full_aos_path} -> {host}:~/{filename}")
-    print(cmd)
     try:
-        process = subprocess.run(
-            cmd,
-            stderr=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True
-        )
+        # Create SSH client
+        ssh = SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         
-        if process.returncode == 0:
-            logger.info("SCP transfer completed successfully")
-            return True
+        # Connect with appropriate authentication
+        connect_kwargs = {
+            "hostname": host,
+            "port": port,
+            "username": username,
+        }
+        
+        if ssh_key_path:
+            connect_kwargs["key_filename"] = ssh_key_path
+            logger.info(f"Using SSH key authentication with key: {ssh_key_path}")
+        elif password:
+            connect_kwargs["password"] = password
+            logger.info("Using password authentication")
         else:
-            logger.error(f"SCP transfer failed: {process.stderr}")
-            return False
+            logger.warning("No authentication method provided, using default keys")
+        
+        # Connect to the remote server
+        ssh.connect(**connect_kwargs)
+        
+        # Create SCP client
+        scp = SCPClient(ssh.get_transport())
+        
+        # If we need to run with sudo privileges for reading the local file
+        # we need to use a temporary file approach or modify permissions
+        # This solution assumes the running user has access to the file
+        logger.info(f"Transferring file via SCP: {full_aos_path} -> {host}:~/{remote_filename}")
+        
+        # Transfer the file
+        scp.put(full_aos_path, f"~/{remote_filename}")
+        
+        # Close connections
+        scp.close()
+        ssh.close()
+        
+        logger.info("SCP transfer completed successfully")
+        return True
+        
+    except paramiko.AuthenticationException as e:
+        logger.error(f"Authentication failed: {str(e)}")
+        return False
+    except paramiko.SSHException as e:
+        logger.error(f"SSH error: {str(e)}")
+        return False
     except Exception as e:
         logger.error(f"Error during SCP transfer: {str(e)}")
         return False
