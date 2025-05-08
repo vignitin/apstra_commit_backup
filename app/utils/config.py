@@ -38,12 +38,21 @@ def get_environment_variables():
         dict: Dictionary with environment variables
     """
     env_vars = {
-        "APSTRA_USERNAME": os.environ.get("APSTRA_USERNAME"),
-        "APSTRA_PASSWORD": os.environ.get("APSTRA_PASSWORD"),
-        "REMOTE_USERNAME": os.environ.get("REMOTE_USERNAME"),
-        "REMOTE_PASSWORD": os.environ.get("REMOTE_PASSWORD"),
-        "SSH_KEY_PATH": os.environ.get("SSH_KEY_PATH")
+        "APSTRA_USERNAME": os.getenv("APSTRA_USERNAME"),
+        "APSTRA_PASSWORD": os.getenv("APSTRA_PASSWORD"),
+        "REMOTE_USERNAME": os.getenv("REMOTE_USERNAME"),
+        "REMOTE_PASSWORD": os.getenv("REMOTE_PASSWORD"),
+        "SSH_KEY_PATH": os.getenv("SSH_KEY_PATH")
     }
+    
+
+    # env_vars = {
+    #     "APSTRA_USERNAME": os.environ.get("APSTRA_USERNAME"),
+    #     "APSTRA_PASSWORD": os.environ.get("APSTRA_PASSWORD"),
+    #     "REMOTE_USERNAME": os.environ.get("REMOTE_USERNAME"),
+    #     "REMOTE_PASSWORD": os.environ.get("REMOTE_PASSWORD"),
+    #     "SSH_KEY_PATH": os.environ.get("SSH_KEY_PATH")
+    # }
     
     # Check if essential variables are missing
     missing_vars = []

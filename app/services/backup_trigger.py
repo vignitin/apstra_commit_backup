@@ -29,33 +29,20 @@ def run_backup_script(script_path, parameters=None):
         command.extend(parameters)
     
     logger.info(f"Executing backup script: {' '.join(command)}")
-    
+
     try:
-        # Execute the script
-        process = subprocess.Popen(
-            command,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        
-        # Wait for the process to complete
-        stdout, stderr = process.communicate(timeout=600)  # 10 minute timeout
-        
-        # Check return code
-        if process.returncode == 0:
-            logger.info("Backup script executed successfully")
-            return True, stdout, stderr
-        else:
-            logger.error(f"Backup script failed with return code {process.returncode}")
-            return False, stdout, stderr
-        
-    except subprocess.TimeoutExpired:
-        logger.error("Backup script timed out")
-        return False, "", "Backup script timed out"
-    except Exception as e:
-        logger.error(f"Error executing backup script: {str(e)}")
-        return False, "", str(e)
+        result = subprocess.run(['sudo', 'bash', '/usr/sbin/aos_backup'],
+                            capture_output=True, text=True, check=True)
+        logger.info("Command output:", result.stdout)
+        stdout=result.stdout
+        stderr=result.stderr
+
+        return True, stdout, stderr
+    
+    except subprocess.CalledProcessError as e:
+        logger.info(f"Command failed with error: {e}")
+        logger.info(f"Error output: {e.stderr}")
+        return False, stdout, stderr
 
 def get_latest_backup_file(backup_output):
     """
@@ -66,16 +53,11 @@ def get_latest_backup_file(backup_output):
         
     Returns:
         str: Path to the backup file or None
-    """
-    # This function assumes the backup script outputs the path to the
-    # backup file somewhere in its stdout, possibly in a specific format.
-    # You'll need to adapt this to match how your script reports the backup file.
-    
-    # Example: Look for a line starting with "BACKUP_FILE:"
+    """    
     for line in backup_output.splitlines():
         if line.startswith("New AOS snapshot:"):
             file_path = line.split(":", 1)[1].strip()
-            complete_path = "var/lib/aos/snapshot/" + file_path
+            complete_path = "/var/lib/aos/snapshot/" + file_path
             if os.path.exists(complete_path):
                 logger.info(f"Found backup file: {complete_path}")
                 return complete_path
