@@ -24,6 +24,12 @@ A robust utility that monitors commits across multiple blueprints and triggers b
 
 ### Basic Installation and Useage
 
+**Video Guide**
+
+[![Video Title](https://img.youtube.com/vi/nbq1oGrmVS0/maxresdefault.jpg)](https://youtu.be/nbq1oGrmVS0)
+
+**Commmands**
+
 1. Clone the repository:
    ```bash
    git clone https://github.com/iamjarvs/apstra_commit_backup.git
