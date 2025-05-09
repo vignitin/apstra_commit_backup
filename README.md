@@ -26,7 +26,7 @@ A robust utility that monitors commits across multiple blueprints and triggers b
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/apstra-api-backup-tool.git
+   git clone https://github.com/iamjarvs/apstra_commit_backup.git
    cd apstra-api-backup-tool
    ```
 
