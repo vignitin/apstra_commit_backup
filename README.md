@@ -4,7 +4,9 @@ A robust utility that monitors commits across multiple blueprints and triggers b
 
 ## Features
 
+- **Automatic Blueprint Discovery**: Automatically discovers and tracks all blueprints in your Apstra system
 - **Multi-Blueprint Support**: Monitor multiple Apstra blueprints simultaneously
+- **Dynamic Configuration**: Configuration file is automatically updated with discovered blueprints
 - **Periodic Polling**: Configurable polling intervals for each blueprint
 - **Change Detection**: Identifies new revisions based on revision IDs
 - **Automated Backups**: Triggers backup script when changes are detected
@@ -64,6 +66,9 @@ A robust utility that monitors commits across multiple blueprints and triggers b
    cp app/config/example.config.yaml app/config/config.yaml
    vi app/config/config.yaml
    ```
+   
+   **Note**: The blueprint list in the configuration file will be automatically discovered and updated by the application. You only need to configure the server address and other settings.
+
 6. Run script
    ```bash
    sudo -E python3 app/main.py
@@ -128,20 +133,37 @@ These environment variables are optional:
 The application supports the following command line options:
 
 ```
---config PATH     Path to custom config file (default: app/config/config.yaml)
---env-file PATH   Path to .env file (default: .env in project root)
+--config PATH                    Path to custom config file (default: app/config/config.yaml)
+--env-file PATH                  Path to .env file (default: .env in project root)
+--blueprint-refresh-hours HOURS  Hours between blueprint discovery refreshes (default: 24)
+--force-blueprint-discovery      Force blueprint discovery on startup regardless of last discovery time
 ```
 
-Example:
-```
+Examples:
+```bash
+# Run with default settings
+sudo -E python3 app/main.py
+
+# Run with custom config and environment files
 sudo -E python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
+
+# Force blueprint discovery on startup
+sudo -E python3 app/main.py --force-blueprint-discovery
+
+# Set blueprint refresh interval to 12 hours
+sudo -E python3 app/main.py --blueprint-refresh-hours 12
+
+# Combine options
+sudo -E python3 app/main.py --force-blueprint-discovery --blueprint-refresh-hours 6
 ```
 
 ## Configuration File
 
 The configuration file (`app/config/config.yaml`) contains settings for:
 
-### Multi-Blueprint Configuration
+### Automatic Blueprint Discovery
+
+**Important**: The blueprint list in the configuration file is now automatically managed by the application. You no longer need to manually add or remove blueprints from the configuration.
 
 ```yaml
 # API Configuration
@@ -149,15 +171,21 @@ api:
   server: "10.28.143.3"
   polling_interval_seconds: 30
   
-  # Multiple blueprints configuration
+  # Blueprints configuration - This section is automatically populated
+  # by the blueprint discovery service
   blueprints:
-    - id: "494c107b-3620-4be1-9ffc-1ffc8611482b"
-      name: "DataCenter-1"  # Optional friendly name
-      endpoint: "/api/blueprints/494c107b-3620-4be1-9ffc-1ffc8611482b/revisions"
-      
-    - id: "5a7e309c-4521-4af2-8971-12b96c5adef8"
-      name: "DataCenter-2"  # Optional friendly name
-      endpoint: "/api/blueprints/5a7e309c-4521-4af2-8971-12b96c5adef8/revisions"
+    # This section will be automatically updated by blueprint discovery
+    # Example entries (automatically generated):
+    # - id: "494c107b-3620-4be1-9ffc-1ffc8611482b"
+    #   name: "DataCenter-1"
+    #   endpoint: "/api/blueprints/494c107b-3620-4be1-9ffc-1ffc8611482b/revisions"
+    #
+    # - id: "5a7e309c-4521-4af2-8971-12b96c5adef8"
+    #   name: "DataCenter-2"
+    #   endpoint: "/api/blueprints/5a7e309c-4521-4af2-8971-12b96c5adef8/revisions"
+  
+  # Timestamp of last blueprint discovery (automatically managed)
+  # last_blueprint_discovery: "2025-01-01T00:00:00.000000"
 
 backup:
   script_path: "/usr/sbin/aos_backup"
@@ -170,34 +198,63 @@ transfer:
   remote_directory: "/backups/apstra/"
 ```
 
-Each blueprint requires:
-- `id`: The UUID of the blueprint (used for identification and backup parameters)
-- `endpoint`: The API endpoint to poll for this blueprint (requires the change in blueprint ID)
+### Blueprint Configuration Details
 
-Optional fields:
-- `name`: A friendly name for the blueprint (used in logs and filenames)
+The application automatically discovers blueprints from your Apstra system and populates the configuration. Each discovered blueprint will have:
+
+- `id`: The UUID of the blueprint (automatically discovered)
+- `name`: The friendly name of the blueprint (automatically discovered from Apstra)
+- `endpoint`: The API endpoint to poll for this blueprint (automatically generated)
+
+### Blueprint Discovery Process
+
+1. **On Startup**: The application automatically discovers all blueprints from your Apstra system
+2. **Periodic Refresh**: Blueprint discovery runs every 24 hours by default (configurable)
+3. **Configuration Update**: The `config.yaml` file is automatically updated with discovered blueprints
+4. **Backup Safety**: A backup of the configuration file is created before each update
+5. **Logging**: All blueprint discovery activities are logged for visibility
 
 ## Usage
 
 ### Running the Application
 
+#### Basic Usage
+
 ```bash
+# Run with automatic blueprint discovery
 sudo -E python app/main.py
 ```
 
-With custom configuration and environment files:
+#### Advanced Usage Examples
 
 ```bash
+# Force blueprint discovery on startup
+sudo -E python app/main.py --force-blueprint-discovery
+
+# Set custom blueprint refresh interval (6 hours)
+sudo -E python app/main.py --blueprint-refresh-hours 6
+
+# Use custom configuration and environment files
 sudo -E python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
+
+# Combine multiple options
+sudo -E python app/main.py --force-blueprint-discovery --blueprint-refresh-hours 12 --config custom-config.yaml
 ```
 
 
 ## How It Works
 
+### Blueprint Discovery Process
+
+1. **Authentication**: The application authenticates with the Apstra server using the provided credentials
+2. **Blueprint Discovery**: The application calls the Apstra API to discover all available blueprints
+3. **Configuration Update**: The discovered blueprints are automatically added to the configuration file
+4. **Backup Creation**: A backup of the original configuration file is created before updates
+
 ### Polling Process
 
-1. The application authenticates with the Apstra server using the provided credentials
-2. For each configured blueprint:
+1. **Periodic Discovery**: The application periodically re-discovers blueprints (every 24 hours by default)
+2. **Blueprint Monitoring**: For each discovered blueprint:
    - The API endpoint is polled for revision information
    - The latest revision is compared with the last known revision
    - If a new revision is detected, the backup process is triggered
@@ -407,6 +464,42 @@ To enable more detailed logging, set the logging level to DEBUG in the configura
 ```yaml
 logging:
   level: "DEBUG"
+```
+
+## Blueprint Discovery Troubleshooting
+
+### Common Issues
+
+1. **No Blueprints Discovered**
+   - Check that your Apstra credentials are correct
+   - Verify network connectivity to the Apstra server
+   - Ensure the Apstra API is accessible at `/api/blueprints`
+
+2. **Configuration File Not Updated**
+   - Check file permissions on the configuration file
+   - Verify that the configuration directory is writable
+   - Review logs for any error messages during configuration updates
+
+3. **Force Blueprint Discovery**
+   ```bash
+   # Force discovery on startup
+   sudo -E python app/main.py --force-blueprint-discovery
+   ```
+
+4. **Check Configuration Backups**
+   - Configuration backups are created in the same directory as the config file
+   - Backup files are named with timestamps (e.g., `config.yaml.backup.20250108_123456`)
+
+### Logs Related to Blueprint Discovery
+
+Look for these log messages to understand blueprint discovery status:
+
+```
+INFO - Starting blueprint discovery...
+INFO - Discovered 3 blueprints
+INFO - New blueprints to add to config: blueprint-id-1, blueprint-id-2
+INFO - Configuration file updated with 3 blueprints
+INFO - Blueprint discovery completed. Found 3 blueprints
 ```
 
 ## Contributing

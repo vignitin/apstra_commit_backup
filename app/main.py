@@ -23,12 +23,13 @@ if str(app_dir) not in sys.path:
     sys.path.insert(0, str(app_dir))
 
 # Import utility functions
-from utils.config import load_config
+from utils.config import load_config, update_config_with_blueprints
 from utils.env_loader import load_environment_variables, apply_env_to_config
 from utils.state import load_state, save_state, update_state
-from services.api_poller import poll_api
+from services.api_poller import poll_api, authenticate
 from services.backup_trigger import run_backup_script, get_latest_backup_file
 from services.transfer import transfer_file
+from services.blueprint_discovery import discover_blueprints, should_refresh_blueprints
 
 # Global variables for signal handling
 running = True
@@ -78,7 +79,73 @@ def parse_arguments():
         '--env-file',
         help='Path to .env file (defaults to .env in the project root)'
     )
+    parser.add_argument(
+        '--blueprint-refresh-hours',
+        type=int,
+        default=24,
+        help='Hours between blueprint discovery refreshes (default: 24)'
+    )
+    parser.add_argument(
+        '--force-blueprint-discovery',
+        action='store_true',
+        help='Force blueprint discovery on startup regardless of last discovery time'
+    )
     return parser.parse_args()
+
+def refresh_blueprint_discovery(config, config_path, refresh_interval_hours=24):
+    """
+    Refresh blueprint discovery if needed and update the configuration file.
+    
+    Args:
+        config (dict): Configuration dictionary
+        config_path (str): Path to the configuration file
+        refresh_interval_hours (int): Hours between blueprint discovery refreshes
+        
+    Returns:
+        dict: Updated configuration dictionary (may be unchanged)
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Check if refresh is needed
+    if not should_refresh_blueprints(config, refresh_interval_hours):
+        return config
+    
+    logger.info("Starting blueprint discovery...")
+    
+    # Get API credentials
+    api_config = config.get("api", {})
+    server = api_config.get("server")
+    username = api_config.get("username")
+    password = api_config.get("password")
+    
+    if not all([server, username, password]):
+        logger.error("Missing required API configuration for blueprint discovery")
+        return config
+    
+    # Authenticate to API
+    token = authenticate(server, username, password)
+    if not token:
+        logger.error("Failed to authenticate for blueprint discovery")
+        return config
+    
+    # Discover blueprints
+    discovered_blueprints = discover_blueprints(server, token)
+    
+    if discovered_blueprints:
+        # Update configuration file
+        success = update_config_with_blueprints(config_path, discovered_blueprints)
+        
+        if success:
+            # Reload config to get updated blueprints
+            updated_config = load_config(config_path)
+            logger.info(f"Blueprint discovery completed. Found {len(discovered_blueprints)} blueprints")
+            return updated_config
+        else:
+            logger.error("Failed to update configuration file with discovered blueprints")
+            return config
+    else:
+        logger.warning("No blueprints discovered")
+        return config
 
 def process_blueprint_changes(config, blueprint_id, blueprint_name):
     """
@@ -170,6 +237,17 @@ def main():
     
     logger.info("Starting API polling and backup service")
     
+    # Force blueprint discovery if requested
+    if args.force_blueprint_discovery:
+        logger.info("Forcing blueprint discovery on startup")
+        # Temporarily set last discovery to None to force refresh
+        api_config = config.get("api", {})
+        api_config["last_blueprint_discovery"] = None
+        config["api"] = api_config
+    
+    # Perform initial blueprint discovery
+    config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_hours)
+    
     # For compatibility with older code - handle single blueprint configuration
     api_config = config.get("api", {})
     if "endpoint" in api_config and "blueprints" not in api_config:
@@ -185,6 +263,9 @@ def main():
     global running
     while running:
         try:
+            # Refresh blueprint discovery if needed
+            config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_hours)
+            
             # Poll the API and check for changes across all blueprints
             changes_by_blueprint, new_state, token = poll_api(config, state)
             

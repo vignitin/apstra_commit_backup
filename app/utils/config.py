@@ -4,6 +4,8 @@ Configuration management for the API polling and backup service.
 import os
 import yaml
 import logging
+import shutil
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -161,3 +163,86 @@ Or create a .env file in the project root.
         merged_config["api"]["password"] = env_vars.get("APSTRA_PASSWORD")
     
     return merged_config
+
+def save_config(config, config_path, backup=True):
+    """
+    Save the configuration to a YAML file.
+    
+    Args:
+        config (dict): Configuration dictionary to save
+        config_path (str): Path to the YAML config file
+        backup (bool): Whether to create a backup of the existing file
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Create backup if requested and file exists
+        if backup and os.path.exists(config_path):
+            backup_path = f"{config_path}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            shutil.copy2(config_path, backup_path)
+            logger.info(f"Created backup of config file: {backup_path}")
+        
+        # Ensure directory exists
+        config_dir = os.path.dirname(config_path)
+        if config_dir:
+            os.makedirs(config_dir, exist_ok=True)
+        
+        # Save the configuration
+        with open(config_path, 'w') as file:
+            yaml.dump(config, file, default_flow_style=False, sort_keys=False)
+            logger.info(f"Configuration saved to {config_path}")
+            return True
+            
+    except Exception as e:
+        logger.error(f"Error saving configuration: {str(e)}")
+        return False
+
+def update_config_with_blueprints(config_path, discovered_blueprints):
+    """
+    Update the configuration file with discovered blueprints.
+    
+    Args:
+        config_path (str): Path to the YAML config file
+        discovered_blueprints (list): List of discovered blueprint configurations
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        # Load current config
+        current_config = load_config(config_path)
+        
+        # Update with discovered blueprints
+        if "api" not in current_config:
+            current_config["api"] = {}
+        
+        # Get current blueprints for comparison
+        current_blueprints = current_config["api"].get("blueprints", [])
+        current_blueprint_ids = {bp.get("id") for bp in current_blueprints if bp.get("id")}
+        discovered_blueprint_ids = {bp.get("id") for bp in discovered_blueprints if bp.get("id")}
+        
+        # Log changes
+        new_blueprints = discovered_blueprint_ids - current_blueprint_ids
+        removed_blueprints = current_blueprint_ids - discovered_blueprint_ids
+        
+        if new_blueprints:
+            logger.info(f"New blueprints to add to config: {', '.join(new_blueprints)}")
+        if removed_blueprints:
+            logger.info(f"Blueprints to remove from config: {', '.join(removed_blueprints)}")
+        
+        # Update the blueprints list
+        current_config["api"]["blueprints"] = discovered_blueprints
+        current_config["api"]["last_blueprint_discovery"] = datetime.now().isoformat()
+        
+        # Save updated config
+        success = save_config(current_config, config_path)
+        
+        if success:
+            logger.info(f"Configuration file updated with {len(discovered_blueprints)} blueprints")
+        
+        return success
+        
+    except Exception as e:
+        logger.error(f"Error updating configuration with blueprints: {str(e)}")
+        return False

@@ -4,16 +4,18 @@ api:
   polling_interval_seconds: 30
   # Authentication will come from environment variables
 
-  # Multiple blueprints configuration
+  # Blueprints configuration - This section will be automatically populated
+  # by the blueprint discovery service. You can manually add blueprints here
+  # if needed, but they will be refreshed automatically.
   blueprints:
-    - id: "494c107b-3620-4be1-9ffc-1ffc8611482b"
-      name: "DataCenter-1"  # Optional friendly name
-      endpoint: "/api/blueprints/494c107b-3620-4be1-9ffc-1ffc8611482b/revisions"
+    # This section will be automatically updated by blueprint discovery
+    # Example entry (will be overwritten):
+    # - id: "494c107b-3620-4be1-9ffc-1ffc8611482b"
+    #   name: "DataCenter-1"
+    #   endpoint: "/api/blueprints/494c107b-3620-4be1-9ffc-1ffc8611482b/revisions"
 
-    # Add more blueprints as needed
-    # - id: "blueprint-uuid"
-    #   name: "Friendly-Name"
-    #   endpoint: "/api/blueprints/blueprint-uuid/revisions"
+  # Timestamp of last blueprint discovery (automatically managed)
+  # last_blueprint_discovery: "2025-01-01T00:00:00.000000"
 
 backup:
   script_path: Null
