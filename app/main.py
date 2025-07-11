@@ -138,6 +138,9 @@ def refresh_blueprint_discovery(config, config_path, refresh_interval_hours=24):
         if success:
             # Reload config to get updated blueprints
             updated_config = load_config(config_path)
+            # Preserve API credentials from the original config
+            updated_config["api"]["username"] = config["api"]["username"]
+            updated_config["api"]["password"] = config["api"]["password"]
             logger.info(f"Blueprint discovery completed. Found {len(discovered_blueprints)} blueprints")
             return updated_config
         else:
