@@ -80,10 +80,10 @@ def parse_arguments():
         help='Path to .env file (defaults to .env in the project root)'
     )
     parser.add_argument(
-        '--blueprint-refresh-hours',
+        '--blueprint-refresh-seconds',
         type=int,
-        default=24,
-        help='Hours between blueprint discovery refreshes (default: 24)'
+        default=300,
+        help='Seconds between blueprint discovery refreshes (default: 300 seconds / 5 minutes)'
     )
     parser.add_argument(
         '--force-blueprint-discovery',
@@ -92,14 +92,14 @@ def parse_arguments():
     )
     return parser.parse_args()
 
-def refresh_blueprint_discovery(config, config_path, refresh_interval_hours=24):
+def refresh_blueprint_discovery(config, config_path, refresh_interval_seconds=300):
     """
     Refresh blueprint discovery if needed and update the configuration file.
     
     Args:
         config (dict): Configuration dictionary
         config_path (str): Path to the configuration file
-        refresh_interval_hours (int): Hours between blueprint discovery refreshes
+        refresh_interval_seconds (int): Seconds between blueprint discovery refreshes
         
     Returns:
         dict: Updated configuration dictionary (may be unchanged)
@@ -107,7 +107,7 @@ def refresh_blueprint_discovery(config, config_path, refresh_interval_hours=24):
     logger = logging.getLogger(__name__)
     
     # Check if refresh is needed
-    if not should_refresh_blueprints(config, refresh_interval_hours):
+    if not should_refresh_blueprints(config, refresh_interval_seconds):
         return config
     
     logger.info("Starting blueprint discovery...")
@@ -243,16 +243,15 @@ def main():
     
     logger.info("Starting API polling and backup service")
     
-    # Force blueprint discovery if requested
-    if args.force_blueprint_discovery:
-        logger.info("Forcing blueprint discovery on startup")
-        # Temporarily set last discovery to None to force refresh
-        api_config = config.get("api", {})
-        api_config["last_blueprint_discovery"] = None
-        config["api"] = api_config
+    # Always force blueprint discovery on startup
+    logger.info("Performing blueprint discovery on startup")
+    # Temporarily set last discovery to None to force refresh
+    api_config = config.get("api", {})
+    api_config["last_blueprint_discovery"] = None
+    config["api"] = api_config
     
     # Perform initial blueprint discovery
-    config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_hours)
+    config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_seconds)
     
     # For compatibility with older code - handle single blueprint configuration
     api_config = config.get("api", {})
@@ -270,7 +269,7 @@ def main():
     while running:
         try:
             # Refresh blueprint discovery if needed
-            config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_hours)
+            config = refresh_blueprint_discovery(config, args.config, args.blueprint_refresh_seconds)
             
             # Poll the API and check for changes across all blueprints
             changes_by_blueprint, new_state, token = poll_api(config, state)

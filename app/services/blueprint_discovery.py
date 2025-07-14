@@ -111,13 +111,13 @@ def update_blueprints_in_config(config, discovered_blueprints):
     logger.info(f"Configuration updated with {len(discovered_blueprints)} blueprints")
     return updated_config
 
-def should_refresh_blueprints(config, refresh_interval_hours=24):
+def should_refresh_blueprints(config, refresh_interval_seconds=300):
     """
     Check if blueprint discovery should be refreshed based on the last discovery time.
     
     Args:
         config (dict): Current configuration dictionary
-        refresh_interval_hours (int): Hours between blueprint discovery refreshes
+        refresh_interval_seconds (int): Seconds between blueprint discovery refreshes
         
     Returns:
         bool: True if blueprints should be refreshed
@@ -134,20 +134,20 @@ def should_refresh_blueprints(config, refresh_interval_hours=24):
         current_time = datetime.now()
         time_diff = current_time - last_discovery_time
         
-        hours_since_discovery = time_diff.total_seconds() / 3600
+        seconds_since_discovery = time_diff.total_seconds()
         
-        if hours_since_discovery >= refresh_interval_hours:
-            logger.info(f"Blueprint discovery is {hours_since_discovery:.1f} hours old, refresh needed")
+        if seconds_since_discovery >= refresh_interval_seconds:
+            logger.info(f"Blueprint discovery is {seconds_since_discovery:.0f} seconds old, refresh needed")
             return True
         else:
-            logger.debug(f"Blueprint discovery is {hours_since_discovery:.1f} hours old, no refresh needed")
+            logger.debug(f"Blueprint discovery is {seconds_since_discovery:.0f} seconds old, no refresh needed")
             return False
             
     except ValueError as e:
         logger.error(f"Error parsing last discovery time: {e}")
         return True
 
-def refresh_blueprints_if_needed(config, server, token, refresh_interval_hours=24):
+def refresh_blueprints_if_needed(config, server, token, refresh_interval_seconds=300):
     """
     Refresh blueprints if the configured interval has passed.
     
@@ -155,12 +155,12 @@ def refresh_blueprints_if_needed(config, server, token, refresh_interval_hours=2
         config (dict): Current configuration dictionary
         server (str): Apstra server address
         token (str): API authentication token
-        refresh_interval_hours (int): Hours between blueprint discovery refreshes
+        refresh_interval_seconds (int): Seconds between blueprint discovery refreshes
         
     Returns:
         dict: Updated configuration dictionary (may be unchanged)
     """
-    if not should_refresh_blueprints(config, refresh_interval_hours):
+    if not should_refresh_blueprints(config, refresh_interval_seconds):
         return config
     
     logger.info("Refreshing blueprint discovery...")
