@@ -141,6 +141,9 @@ def refresh_blueprint_discovery(config, config_path, refresh_interval_hours=24):
             # Preserve API credentials from the original config
             updated_config["api"]["username"] = config["api"]["username"]
             updated_config["api"]["password"] = config["api"]["password"]
+            # Preserve transfer credentials from the original config
+            if "transfer" in config:
+                updated_config["transfer"] = config["transfer"]
             logger.info(f"Blueprint discovery completed. Found {len(discovered_blueprints)} blueprints")
             return updated_config
         else:
