@@ -228,12 +228,8 @@ def process_full_system_backup(config, changed_blueprints):
         # Get the backup file path from the output
         backup_file = get_latest_backup_file(output)
         if backup_file:
-            # Create a descriptive name for the transfer that includes changed blueprint info
-            changed_blueprint_names = [name for _, name in changed_blueprints]
+            # Create a descriptive name for the transfer that includes changed blueprint count
             blueprint_summary = f"{len(changed_blueprints)}_blueprints_changed"
-            if len(changed_blueprints) <= 3:
-                # If 3 or fewer blueprints changed, include their names
-                blueprint_summary = "_".join(changed_blueprint_names[:3])
             
             # Transfer the backup file with descriptive naming
             logger.info(f"Transferring full system backup file: {backup_file}")
