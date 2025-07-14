@@ -219,8 +219,14 @@ def update_config_with_blueprints(config_path, discovered_blueprints):
         
         # Get current blueprints for comparison
         current_blueprints = current_config["api"].get("blueprints", [])
-        current_blueprint_ids = {bp.get("id") for bp in current_blueprints if bp.get("id")}
-        discovered_blueprint_ids = {bp.get("id") for bp in discovered_blueprints if bp.get("id")}
+        if current_blueprints is None:
+            current_blueprints = []
+        if discovered_blueprints is None:
+            logger.error("Discovered blueprints is None, cannot update configuration")
+            return False
+            
+        current_blueprint_ids = {bp.get("id") for bp in current_blueprints if bp and bp.get("id")}
+        discovered_blueprint_ids = {bp.get("id") for bp in discovered_blueprints if bp and bp.get("id")}
         
         # Log changes
         new_blueprints = discovered_blueprint_ids - current_blueprint_ids

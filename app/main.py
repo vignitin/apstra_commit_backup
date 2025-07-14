@@ -131,6 +131,8 @@ def refresh_blueprint_discovery(config, config_path, refresh_interval_seconds=30
     # Discover blueprints
     discovered_blueprints = discover_blueprints(server, token)
     
+    logger.info(f"Blueprint discovery returned: {type(discovered_blueprints)} with {len(discovered_blueprints) if discovered_blueprints else 0} items")
+    
     if discovered_blueprints:
         # Update configuration file
         success = update_config_with_blueprints(config_path, discovered_blueprints)

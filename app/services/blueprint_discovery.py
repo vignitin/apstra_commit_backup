@@ -39,7 +39,7 @@ def discover_blueprints(server, token):
             if "items" in data:
                 logger.info(f"Discovered {len(data['items'])} blueprints")
                 
-                for blueprint in data["items"]:
+                for i, blueprint in enumerate(data["items"]):
                     blueprint_id = blueprint.get("id")
                     blueprint_name = blueprint.get("label", blueprint_id)
                     
@@ -50,8 +50,11 @@ def discover_blueprints(server, token):
                             "endpoint": f"/api/blueprints/{blueprint_id}/revisions"
                         }
                         blueprints.append(blueprint_config)
-                        logger.debug(f"Added blueprint: {blueprint_name} ({blueprint_id})")
+                        logger.debug(f"Added blueprint {i+1}/{len(data['items'])}: {blueprint_name} ({blueprint_id})")
+                    else:
+                        logger.warning(f"Blueprint {i+1} has no ID, skipping: {blueprint}")
                 
+                logger.info(f"Successfully processed {len(blueprints)} valid blueprints")
                 return blueprints
             else:
                 logger.warning("No 'items' found in blueprints API response")
