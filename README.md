@@ -5,6 +5,8 @@ A robust utility that monitors commits across multiple blueprints and triggers b
 ## Features
 
 - **Automatic Blueprint Discovery**: Automatically discovers and tracks all blueprints in your Apstra system
+- **Immediate Detection**: Blueprint discovery runs on every startup for immediate detection of changes
+- **Fast Refresh Cycles**: Blueprint discovery runs every 5 minutes by default (configurable down to seconds)
 - **Multi-Blueprint Support**: Monitor multiple Apstra blueprints simultaneously
 - **Dynamic Configuration**: Configuration file is automatically updated with discovered blueprints
 - **Periodic Polling**: Configurable polling intervals for each blueprint
@@ -135,8 +137,8 @@ The application supports the following command line options:
 ```
 --config PATH                    Path to custom config file (default: app/config/config.yaml)
 --env-file PATH                  Path to .env file (default: .env in project root)
---blueprint-refresh-hours HOURS  Hours between blueprint discovery refreshes (default: 24)
---force-blueprint-discovery      Force blueprint discovery on startup regardless of last discovery time
+--blueprint-refresh-seconds SECONDS  Seconds between blueprint discovery refreshes (default: 300)
+--force-blueprint-discovery       Force blueprint discovery on startup regardless of last discovery time (deprecated - discovery now always runs on startup)
 ```
 
 Examples:
@@ -147,14 +149,14 @@ sudo -E python3 app/main.py
 # Run with custom config and environment files
 sudo -E python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
 
-# Force blueprint discovery on startup
-sudo -E python3 app/main.py --force-blueprint-discovery
+# Set blueprint refresh interval to 60 seconds  
+sudo -E python3 app/main.py --blueprint-refresh-seconds 60
 
-# Set blueprint refresh interval to 12 hours
-sudo -E python3 app/main.py --blueprint-refresh-hours 12
+# Set blueprint refresh interval to 10 minutes (600 seconds)
+sudo -E python3 app/main.py --blueprint-refresh-seconds 600
 
-# Combine options
-sudo -E python3 app/main.py --force-blueprint-discovery --blueprint-refresh-hours 6
+# Combine options with custom config
+sudo -E python3 app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
 ```
 
 ## Configuration File
@@ -208,8 +210,8 @@ The application automatically discovers blueprints from your Apstra system and p
 
 ### Blueprint Discovery Process
 
-1. **On Startup**: The application automatically discovers all blueprints from your Apstra system
-2. **Periodic Refresh**: Blueprint discovery runs every 24 hours by default (configurable)
+1. **On Startup**: The application **always** automatically discovers all blueprints from your Apstra system on every startup
+2. **Periodic Refresh**: Blueprint discovery runs every 5 minutes (300 seconds) by default (configurable with `--blueprint-refresh-seconds`)
 3. **Configuration Update**: The `config.yaml` file is automatically updated with discovered blueprints
 4. **Backup Safety**: A backup of the configuration file is created before each update
 5. **Logging**: All blueprint discovery activities are logged for visibility
@@ -221,24 +223,24 @@ The application automatically discovers blueprints from your Apstra system and p
 #### Basic Usage
 
 ```bash
-# Run with automatic blueprint discovery
+# Run with automatic blueprint discovery (always runs on startup)
 sudo -E python app/main.py
 ```
 
 #### Advanced Usage Examples
 
 ```bash
-# Force blueprint discovery on startup
-sudo -E python app/main.py --force-blueprint-discovery
+# Set faster blueprint refresh interval (every 60 seconds)
+sudo -E python app/main.py --blueprint-refresh-seconds 60
 
-# Set custom blueprint refresh interval (6 hours)
-sudo -E python app/main.py --blueprint-refresh-hours 6
+# Set custom blueprint refresh interval (every 10 minutes)
+sudo -E python app/main.py --blueprint-refresh-seconds 600
 
 # Use custom configuration and environment files
 sudo -E python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
 
 # Combine multiple options
-sudo -E python app/main.py --force-blueprint-discovery --blueprint-refresh-hours 12 --config custom-config.yaml
+sudo -E python app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
 ```
 
 
@@ -253,8 +255,9 @@ sudo -E python app/main.py --force-blueprint-discovery --blueprint-refresh-hours
 
 ### Polling Process
 
-1. **Periodic Discovery**: The application periodically re-discovers blueprints (every 24 hours by default)
-2. **Blueprint Monitoring**: For each discovered blueprint:
+1. **Startup Discovery**: The application **always** discovers blueprints on startup to ensure immediate detection of changes
+2. **Periodic Discovery**: The application periodically re-discovers blueprints (every 5 minutes by default, configurable)
+3. **Blueprint Monitoring**: For each discovered blueprint:
    - The API endpoint is polled for revision information
    - The latest revision is compared with the last known revision
    - If a new revision is detected, the backup process is triggered
@@ -480,11 +483,10 @@ logging:
    - Verify that the configuration directory is writable
    - Review logs for any error messages during configuration updates
 
-3. **Force Blueprint Discovery**
-   ```bash
-   # Force discovery on startup
-   sudo -E python app/main.py --force-blueprint-discovery
-   ```
+3. **Blueprint Discovery Always Runs on Startup**
+   - Blueprint discovery now automatically runs on every startup
+   - No need to use `--force-blueprint-discovery` flag (deprecated but still supported)
+   - Deleted blueprints are detected immediately when the application is restarted
 
 4. **Check Configuration Backups**
    - Configuration backups are created in the same directory as the config file
@@ -495,12 +497,29 @@ logging:
 Look for these log messages to understand blueprint discovery status:
 
 ```
+INFO - Performing blueprint discovery on startup
 INFO - Starting blueprint discovery...
 INFO - Discovered 3 blueprints
 INFO - New blueprints to add to config: blueprint-id-1, blueprint-id-2
+INFO - Blueprints to remove from config: deleted-blueprint-id
 INFO - Configuration file updated with 3 blueprints
 INFO - Blueprint discovery completed. Found 3 blueprints
 ```
+
+### Immediate Detection of Changes
+
+The application now provides immediate detection of blueprint changes:
+
+- **Deleted Blueprints**: When you delete a blueprint from Apstra and restart the application, it will immediately detect the deletion and update the configuration
+- **New Blueprints**: New blueprints are detected on startup and during the 5-minute refresh cycles
+- **No Manual Intervention**: No need to manually update configuration files or use special flags
+
+Example workflow for blueprint deletion:
+1. Delete a blueprint in Apstra
+2. Restart the application: `sudo -E python3 app/main.py`
+3. Application detects the deletion immediately
+4. Configuration file is automatically updated
+5. Application stops monitoring the deleted blueprint
 
 ## Contributing
 
