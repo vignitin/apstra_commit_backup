@@ -201,6 +201,57 @@ def process_blueprint_changes(config, blueprint_id, blueprint_name):
         logger.error(f"Backup script failed for {blueprint_name}: {error}")
         return False
 
+def process_full_system_backup(config, changed_blueprints):
+    """
+    Process a full system backup when any blueprints have changes.
+    
+    Args:
+        config (dict): Configuration dictionary
+        changed_blueprints (list): List of tuples (blueprint_id, blueprint_name) that had changes
+        
+    Returns:
+        bool: True if backup and transfer succeeded, False otherwise
+    """
+    logger = logging.getLogger(__name__)
+    logger.info("Starting full system backup")
+    
+    # Run backup script without blueprint parameter for full system backup
+    backup_script = config.get("backup", {}).get("script_path") or "/usr/sbin/aos_backup"
+    backup_params = config.get("backup", {}).get("parameters", []).copy()
+    
+    # Make sure we don't include any blueprint-specific parameters for full backup
+    backup_params = [param for param in backup_params if param != "--blueprint"]
+    
+    success, output, error = run_backup_script(backup_script, backup_params)
+    
+    if success:
+        # Get the backup file path from the output
+        backup_file = get_latest_backup_file(output)
+        if backup_file:
+            # Create a descriptive name for the transfer that includes changed blueprint info
+            changed_blueprint_names = [name for _, name in changed_blueprints]
+            blueprint_summary = f"{len(changed_blueprints)}_blueprints_changed"
+            if len(changed_blueprints) <= 3:
+                # If 3 or fewer blueprints changed, include their names
+                blueprint_summary = "_".join(changed_blueprint_names[:3])
+            
+            # Transfer the backup file with descriptive naming
+            logger.info(f"Transferring full system backup file: {backup_file}")
+            transfer_success = transfer_file(config, backup_file, "full_system", blueprint_summary)
+            
+            if transfer_success:
+                logger.info("Full system backup process completed successfully")
+                return True
+            else:
+                logger.error("Failed to transfer full system backup file")
+                return False
+        else:
+            logger.error("Could not determine backup file path for full system backup")
+            return False
+    else:
+        logger.error(f"Full system backup script failed: {error}")
+        return False
+
 def main():
     """Main function to run the service."""
     # Parse command line arguments
@@ -281,8 +332,10 @@ def main():
                 time.sleep(5)
                 continue
             
-            # Process each blueprint with changes
-            blueprints_updated = []
+            # Check if any blueprints have changes
+            changed_blueprints = []
+            any_changes = False
+            
             for blueprint_id, has_changes in changes_by_blueprint.items():
                 if has_changes:
                     # Get blueprint details from new state
@@ -290,20 +343,28 @@ def main():
                     blueprint_name = blueprint_state.get("blueprint_name", blueprint_id)
                     
                     logger.info(f"Changes detected in blueprint: {blueprint_name} ({blueprint_id})")
-                    
-                    # Process changes for this blueprint
-                    success = process_blueprint_changes(config, blueprint_id, blueprint_name)
-                    
-                    if success:
-                        # Update state only for successful backup
-                        blueprints_updated.append(blueprint_id)
+                    changed_blueprints.append((blueprint_id, blueprint_name))
+                    any_changes = True
             
-            # Update state after processing all changes
-            if blueprints_updated:
-                # Only update state for blueprints that were successfully backed up
-                for blueprint_id in blueprints_updated:
-                    state["blueprints"][blueprint_id] = new_state["blueprints"][blueprint_id]
-                save_state(state_file, state)
+            # If any changes detected, take a single full system backup
+            if any_changes:
+                logger.info(f"Changes detected in {len(changed_blueprints)} blueprint(s). Taking full system backup.")
+                
+                # List the changed blueprints for logging
+                for blueprint_id, blueprint_name in changed_blueprints:
+                    logger.info(f"  - {blueprint_name} ({blueprint_id})")
+                
+                # Take full system backup
+                success = process_full_system_backup(config, changed_blueprints)
+                
+                if success:
+                    # Update state for all blueprints that had changes
+                    for blueprint_id, _ in changed_blueprints:
+                        state["blueprints"][blueprint_id] = new_state["blueprints"][blueprint_id]
+                    save_state(state_file, state)
+                    logger.info("Full system backup completed successfully")
+                else:
+                    logger.error("Full system backup failed")
             elif new_state != state:
                 # If no backups were needed but state changed, update it
                 state = new_state
