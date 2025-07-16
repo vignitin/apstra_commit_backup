@@ -32,14 +32,8 @@ def run_backup_script(script_path, parameters=None):
     logger.info(f"Executing backup script: {' '.join(command)}")
 
     try:
-        # Check if we need to use sudo
-        use_sudo = script_path.startswith('/usr/') or script_path.startswith('/bin/')
-        
-        if use_sudo:
-            full_command = ['sudo', 'bash'] + command
-            logger.info(f"Using sudo to execute: {' '.join(full_command)}")
-        else:
-            full_command = ['bash'] + command
+        # Always run without sudo - assuming service runs with appropriate permissions
+        full_command = ['bash'] + command
         
         result = subprocess.run(
             full_command,
