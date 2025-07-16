@@ -73,9 +73,10 @@ A robust utility that monitors commits across multiple blueprints and triggers b
 
 6. Run script
    ```bash
-   sudo -E python3 app/main.py
+   python3 app/main.py
    ```
-   Apstra's `aos_backup` script needs to be run as sudo 
+   
+   **Note**: The service no longer requires sudo privileges. It runs with regular user permissions and should be configured to run as a service with appropriate permissions for accessing the aos_backup script. 
 
 
 
@@ -144,19 +145,19 @@ The application supports the following command line options:
 Examples:
 ```bash
 # Run with default settings
-sudo -E python3 app/main.py
+python3 app/main.py
 
 # Run with custom config and environment files
-sudo -E python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
+python3 app/main.py --config custom-config.yaml --env-file /path/to/.env
 
 # Set blueprint refresh interval to 60 seconds  
-sudo -E python3 app/main.py --blueprint-refresh-seconds 60
+python3 app/main.py --blueprint-refresh-seconds 60
 
 # Set blueprint refresh interval to 10 minutes (600 seconds)
-sudo -E python3 app/main.py --blueprint-refresh-seconds 600
+python3 app/main.py --blueprint-refresh-seconds 600
 
 # Combine options with custom config
-sudo -E python3 app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
+python3 app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
 ```
 
 ## Configuration File
@@ -213,7 +214,7 @@ The application automatically discovers blueprints from your Apstra system and p
 1. **On Startup**: The application **always** automatically discovers all blueprints from your Apstra system on every startup
 2. **Periodic Refresh**: Blueprint discovery runs every 5 minutes (300 seconds) by default (configurable with `--blueprint-refresh-seconds`)
 3. **Configuration Update**: The `config.yaml` file is automatically updated with discovered blueprints
-4. **Backup Safety**: A backup of the configuration file is created before each update
+4. **Backup Safety**: A single backup of the configuration file is maintained (config.yaml.backup) - only updated when content changes
 5. **Logging**: All blueprint discovery activities are logged for visibility
 
 ## Usage
@@ -224,23 +225,23 @@ The application automatically discovers blueprints from your Apstra system and p
 
 ```bash
 # Run with automatic blueprint discovery (always runs on startup)
-sudo -E python app/main.py
+python3 app/main.py
 ```
 
 #### Advanced Usage Examples
 
 ```bash
 # Set faster blueprint refresh interval (every 60 seconds)
-sudo -E python app/main.py --blueprint-refresh-seconds 60
+python3 app/main.py --blueprint-refresh-seconds 60
 
 # Set custom blueprint refresh interval (every 10 minutes)
-sudo -E python app/main.py --blueprint-refresh-seconds 600
+python3 app/main.py --blueprint-refresh-seconds 600
 
 # Use custom configuration and environment files
-sudo -E python app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
+python3 app/main.py --config /path/to/custom-config.yaml --env-file /path/to/.env
 
 # Combine multiple options
-sudo -E python app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
+python3 app/main.py --blueprint-refresh-seconds 120 --config custom-config.yaml
 ```
 
 
@@ -251,7 +252,7 @@ sudo -E python app/main.py --blueprint-refresh-seconds 120 --config custom-confi
 1. **Authentication**: The application authenticates with the Apstra server using the provided credentials
 2. **Blueprint Discovery**: The application calls the Apstra API to discover all available blueprints
 3. **Configuration Update**: The discovered blueprints are automatically added to the configuration file
-4. **Backup Creation**: A backup of the original configuration file is created before updates
+4. **Backup Creation**: A single backup of the configuration file is maintained (config.yaml.backup) - only updated when content actually changes
 
 ### Polling Process
 
@@ -489,8 +490,8 @@ logging:
    - Deleted blueprints are detected immediately when the application is restarted
 
 4. **Check Configuration Backups**
-   - Configuration backups are created in the same directory as the config file
-   - Backup files are named with timestamps (e.g., `config.yaml.backup.20250108_123456`)
+   - A single configuration backup is maintained in the same directory as the config file
+   - Backup file is named `config.yaml.backup` (no timestamp - single file maintained)
 
 ### Logs Related to Blueprint Discovery
 
@@ -516,10 +517,96 @@ The application now provides immediate detection of blueprint changes:
 
 Example workflow for blueprint deletion:
 1. Delete a blueprint in Apstra
-2. Restart the application: `sudo -E python3 app/main.py`
+2. Restart the application: `python3 app/main.py`
 3. Application detects the deletion immediately
 4. Configuration file is automatically updated
 5. Application stops monitoring the deleted blueprint
+
+## Running as a Service
+
+### Permissions and Setup
+
+The application no longer requires sudo privileges. Instead, it should be run as a service with appropriate permissions:
+
+#### Run as a dedicated service user
+
+1. Create a service user:
+   ```bash
+   sudo useradd -r -s /bin/false apstra-backup
+   ```
+
+2. Install Python packages for the service user:
+   ```bash
+   # Switch to service user and install packages
+   sudo -u apstra-backup pip3 install --user -r requirements.txt
+   ```
+   
+   **Note**: The service user must have access to all required Python packages. You can alternatively install packages system-wide with `sudo pip3 install -r requirements.txt`.
+
+3. Grant the service user permission to execute the backup script:
+   ```bash
+   # Add to sudoers file for specific command only
+   sudo visudo
+   # Add this line:
+   apstra-backup ALL=(ALL) NOPASSWD: /usr/sbin/aos_backup
+   ```
+
+4. Set proper ownership for the application directory:
+   ```bash
+   sudo chown -R apstra-backup:apstra-backup /path/to/apstra_commit_backup
+   ```
+
+5. Create a systemd service file `/etc/systemd/system/apstra-backup.service`:
+   ```ini
+   [Unit]
+   Description=Apstra Blueprint Backup Service
+   After=network.target
+
+   [Service]
+   Type=simple
+   User=apstra-backup
+   Group=apstra-backup
+   WorkingDirectory=/path/to/apstra_commit_backup
+   ExecStart=/usr/bin/python3 /path/to/apstra_commit_backup/app/main.py
+   Restart=always
+   RestartSec=10
+   EnvironmentFile=/path/to/apstra_commit_backup/.env
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+6. Enable and start the service:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable apstra-backup.service
+   sudo systemctl start apstra-backup.service
+   ```
+
+### Service Management
+
+Check service status:
+```bash
+sudo systemctl status apstra-backup.service
+```
+
+View service logs:
+```bash
+sudo journalctl -u apstra-backup.service -f
+```
+
+Stop the service:
+```bash
+sudo systemctl stop apstra-backup.service
+```
+
+### Security Considerations
+
+- The application no longer runs with full sudo privileges
+- Only the specific backup script execution requires elevated permissions
+- Service user has minimal system access
+- Environment variables are loaded from a secure .env file
+- Configuration backups are maintained with proper file permissions
 
 ## Contributing
 

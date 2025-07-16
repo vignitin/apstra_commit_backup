@@ -177,11 +177,27 @@ def save_config(config, config_path, backup=True):
         bool: True if successful, False otherwise
     """
     try:
-        # Create backup if requested and file exists
+        # Create single backup if requested and file exists
         if backup and os.path.exists(config_path):
-            backup_path = f"{config_path}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            shutil.copy2(config_path, backup_path)
-            logger.info(f"Created backup of config file: {backup_path}")
+            backup_path = f"{config_path}.backup"
+            
+            # Check if backup is needed (content comparison)
+            if os.path.exists(backup_path):
+                try:
+                    with open(config_path, 'r') as current_file:
+                        current_content = current_file.read()
+                    with open(backup_path, 'r') as backup_file:
+                        backup_content = backup_file.read()
+                    
+                    if current_content == backup_content:
+                        logger.debug("Config content unchanged, skipping backup")
+                    else:
+                        _create_atomic_backup(config_path, backup_path)
+                except Exception as e:
+                    logger.warning(f"Could not compare config files, creating backup anyway: {str(e)}")
+                    _create_atomic_backup(config_path, backup_path)
+            else:
+                _create_atomic_backup(config_path, backup_path)
         
         # Ensure directory exists
         config_dir = os.path.dirname(config_path)
@@ -197,6 +213,38 @@ def save_config(config, config_path, backup=True):
     except Exception as e:
         logger.error(f"Error saving configuration: {str(e)}")
         return False
+
+def _create_atomic_backup(config_path, backup_path):
+    """
+    Create a backup file atomically to avoid corruption.
+    
+    Args:
+        config_path (str): Path to the original config file
+        backup_path (str): Path to the backup file
+    """
+    try:
+        # Write to temporary file first
+        temp_backup_path = f"{backup_path}.tmp"
+        shutil.copy2(config_path, temp_backup_path)
+        
+        # Validate that the temporary backup is valid YAML
+        with open(temp_backup_path, 'r') as temp_file:
+            yaml.safe_load(temp_file)
+        
+        # Atomically replace the backup file
+        os.rename(temp_backup_path, backup_path)
+        logger.info(f"Created backup of config file: {backup_path}")
+        
+    except yaml.YAMLError as e:
+        logger.error(f"Backup file is not valid YAML, removing: {str(e)}")
+        if os.path.exists(temp_backup_path):
+            os.remove(temp_backup_path)
+        raise
+    except Exception as e:
+        logger.error(f"Error creating atomic backup: {str(e)}")
+        if os.path.exists(temp_backup_path):
+            os.remove(temp_backup_path)
+        raise
 
 def update_config_with_blueprints(config_path, discovered_blueprints):
     """
