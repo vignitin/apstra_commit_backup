@@ -528,7 +528,7 @@ Example workflow for blueprint deletion:
 
 1. Install Python packages system-wide:
    ```bash
-   sudo pip3 install -r requirements.txt
+   sudo pip3 install -r /path/to/apstra_commit_backup/requirements.txt
    ```
 
 2. Create a systemd service file `/etc/systemd/system/apstra-backup.service`:
