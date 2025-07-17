@@ -524,39 +524,14 @@ Example workflow for blueprint deletion:
 
 ## Running as a Service
 
-### Permissions and Setup
+### Setup
 
-The application no longer requires sudo privileges. Instead, it should be run as a service with appropriate permissions:
-
-#### Run as a dedicated service user
-
-1. Create a service user:
+1. Install Python packages system-wide:
    ```bash
-   sudo useradd -r -s /bin/false apstra-backup
+   sudo pip3 install -r requirements.txt
    ```
 
-2. Install Python packages for the service user:
-   ```bash
-   # Switch to service user and install packages
-   sudo -u apstra-backup pip3 install --user -r requirements.txt
-   ```
-   
-   **Note**: The service user must have access to all required Python packages. You can alternatively install packages system-wide with `sudo pip3 install -r requirements.txt`.
-
-3. Grant the service user permission to execute the backup script:
-   ```bash
-   # Add to sudoers file for specific command only
-   sudo visudo
-   # Add this line:
-   apstra-backup ALL=(ALL) NOPASSWD: /usr/sbin/aos_backup
-   ```
-
-4. Set proper ownership for the application directory:
-   ```bash
-   sudo chown -R apstra-backup:apstra-backup /path/to/apstra_commit_backup
-   ```
-
-5. Create a systemd service file `/etc/systemd/system/apstra-backup.service`:
+2. Create a systemd service file `/etc/systemd/system/apstra-backup.service`:
    ```ini
    [Unit]
    Description=Apstra Blueprint Backup Service
@@ -564,8 +539,8 @@ The application no longer requires sudo privileges. Instead, it should be run as
 
    [Service]
    Type=simple
-   User=apstra-backup
-   Group=apstra-backup
+   User=root
+   Group=root
    WorkingDirectory=/path/to/apstra_commit_backup
    ExecStart=/usr/bin/python3 /path/to/apstra_commit_backup/app/main.py
    Restart=always
@@ -576,7 +551,7 @@ The application no longer requires sudo privileges. Instead, it should be run as
    WantedBy=multi-user.target
    ```
 
-6. Enable and start the service:
+3. Enable and start the service:
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable apstra-backup.service
@@ -599,14 +574,6 @@ Stop the service:
 ```bash
 sudo systemctl stop apstra-backup.service
 ```
-
-### Security Considerations
-
-- The application no longer runs with full sudo privileges
-- Only the specific backup script execution requires elevated permissions
-- Service user has minimal system access
-- Environment variables are loaded from a secure .env file
-- Configuration backups are maintained with proper file permissions
 
 ## Contributing
 
